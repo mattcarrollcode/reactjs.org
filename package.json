@@ -108,7 +108,7 @@
     "webpack-bundle-analyzer": "^4.5.0"
   },
   "engines": {
-    "node": ">=16.8.0"
+    "node": ">=22"
   },
   "nextBundleAnalysis": {
     "budget": null,
