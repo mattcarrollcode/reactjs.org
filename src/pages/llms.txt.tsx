@@ -10,13 +10,7 @@ import {siteConfig} from '../siteConfig';
 import sidebarLearn from '../sidebarLearn.json';
 import sidebarReference from '../sidebarReference.json';
 
-interface RouteItem {
-  title?: string;
-  path?: string;
-  routes?: RouteItem[];
-  hasSectionHeader?: boolean;
-  sectionHeader?: string;
-}
+import type {RouteItem} from '../utils/docs';
 
 interface Sidebar {
   title: string;

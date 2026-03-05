@@ -6,8 +6,6 @@
  */
 
 import type {NextApiRequest, NextApiResponse} from 'next';
-import fs from 'fs';
-import path from 'path';
 import {McpServer} from '@modelcontextprotocol/sdk/server/mcp.js';
 import {StreamableHTTPServerTransport} from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import {z} from 'zod';
@@ -17,15 +15,14 @@ import sidebarReference from '../../sidebarReference.json';
 import sidebarBlog from '../../sidebarBlog.json';
 import sidebarCommunity from '../../sidebarCommunity.json';
 
-// --- Sidebar types and page collection ---
+import {
+  type RouteItem,
+  type PageEntry,
+  collectPages,
+  readContentFile,
+} from '../../utils/docs';
 
-interface RouteItem {
-  title?: string;
-  path?: string;
-  routes?: RouteItem[];
-  hasSectionHeader?: boolean;
-  sectionHeader?: string;
-}
+// --- Sidebar types and page collection ---
 
 interface Sidebar {
   title: string;
@@ -33,41 +30,9 @@ interface Sidebar {
   routes: RouteItem[];
 }
 
-interface PageEntry {
-  title: string;
-  path: string;
-}
-
 interface Section {
   section: string;
   pages: PageEntry[];
-}
-
-function collectPages(routes: RouteItem[]): PageEntry[] {
-  const pages: PageEntry[] = [];
-  for (const route of routes) {
-    // Skip section headers without paths
-    if (route.hasSectionHeader && !route.path) {
-      continue;
-    }
-    // Skip external links
-    if (route.path?.startsWith('http')) {
-      continue;
-    }
-    // Collect this page if it has a title and path
-    if (route.title && route.path) {
-      pages.push({
-        title: route.title,
-        // Strip leading slash for consistency with get_page
-        path: route.path.replace(/^\//, ''),
-      });
-    }
-    // Recurse into children
-    if (route.routes) {
-      pages.push(...collectPages(route.routes));
-    }
-  }
-  return pages;
 }
 
 // Build page index at module load time (static data)
@@ -77,34 +42,6 @@ const PAGE_INDEX: Section[] = (
   section: sidebar.title,
   pages: collectPages(sidebar.routes),
 }));
-
-// --- Markdown file resolution ---
-
-const contentCache = new Map<string, string>();
-
-function readMarkdownFile(filePath: string): string | null {
-  const cached = contentCache.get(filePath);
-  if (cached !== undefined) {
-    return cached;
-  }
-
-  const candidates = [
-    path.join(process.cwd(), 'src/content', filePath + '.md'),
-    path.join(process.cwd(), 'src/content', filePath, 'index.md'),
-  ];
-
-  for (const fullPath of candidates) {
-    try {
-      const content = fs.readFileSync(fullPath, 'utf8');
-      contentCache.set(filePath, content);
-      return content;
-    } catch {
-      // Try next candidate
-    }
-  }
-
-  return null;
-}
 
 // --- Next.js API config ---
 
@@ -172,7 +109,7 @@ export default async function handler(
       },
     },
     async ({path: pagePath}: {path: string}) => {
-      const content = readMarkdownFile(pagePath);
+      const content = readContentFile(pagePath);
       if (content === null) {
         return {
           isError: true,
